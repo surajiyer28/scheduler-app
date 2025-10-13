@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scheduler</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+
+
+</head>
+<body class="font-monospace">
+    
+    <nav class="navbar navbar-expand-lg bg-info">
+        <div class="container d-flex justify-content-between">
+            <a href="/dashboard" style="text-decoration: none;"><h3 class="navbar-brand fw-bold text-dark fs-3">Appointment Booking System</h3></a>
+            <div class="flex " th:if="${currentUser != null}">
+                <span class="navbar-text me-3 text-dark" th:text="'Welcome, ' + ${currentUser.name} + ' (' + ${currentUser.role} + ')'"></span> 
+                <a href="/logout" class="btn btn-dark btn-sm text-white">LOGOUT <i class="bi bi-box-arrow-right"></i></a>
+            </div>
+        </div>
+    </nav>
+    <div class="container mt-5">
+    
+        
+
+        <div class="row justify-content-center" th:if="${currentUser.role.name() == 'PROFESSOR'}">
+
+            <div class=" d-flex justify-content-between align-items-center mb-3 border p-3" >
+                    <h5 class="mb-0 ">Create New Appointment Group</h5>
+                    <a href="/dashboard" class="btn btn-info text-dark fw-bold fs-6"><i class="bi bi-arrow-left-circle-fill text-dark fs-6"></i> Back to Dashboard </a>
+            </div>
+            <div class="row border p-3">
+                <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
+                <form action="/professor/appointments/create" method="post" id="appointmentForm">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" required
+                               placeholder="e.g., Screen 1 Review Meetings">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="type" class="form-label">Appointment Type</label>
+                            <select class="form-select" id="type" name="type" required>
+                                <option value="">-- Select Type --</option>
+                                <option th:each="type : ${types}" th:value="${type}" th:text="${type}"></option>
+                            </select>
+                            
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="durationPerSlot" class="form-label">Slot Duration (minutes)</label>
+                            <input type="number" class="form-control" id="durationPerSlot" name="durationPerSlot"
+                                   min="5" max="480" required placeholder="e.g., 15, 30, 45">
+        
+                        </div>
+                    </div>
+
+                    
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
+                            <div>
+                                <label class="form-label mb-0">Availability Windows</label>
+                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-success" onclick="addAvailabilityWindow()">
+                                <i class="bi bi-plus-circle-fill fs-6"></i> Add Day
+                            </button>
+                        </div>
+                        <hr>
+                        <div id="availabilityContainer">
+         
+                            <div class="availability-window ">
+                                <div class="d-flex justify-content-between align-items-center mb-1 ">
+                                    <span class="availability-header">Day #1</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvailabilityWindow(this)">
+                                        <i class="bi bi-trash-fill fs-6"></i> Delete
+                                    </button>
+                                </div>
+                                <div class="row">
+                                    
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label small">Date</label>
+                                        <input type="date" class="form-control" name="dates" required>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label small">Start Time</label>
+                                        <input type="time" class="form-control" name="startTimes" step="60" required>
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        
+                                        <label class="form-label small">End Time</label>
+                                        <input type="time" class="form-control" name="endTimes" step="60" required>
+                                    </div>
+                                    
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex">
+                        <button type="submit" class="btn btn-outline-info">Create Appointment Group</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+ 
+    <script>
+        let availabilityCount = 1;
+
+        function addAvailabilityWindow() {
+            availabilityCount++;
+            const container = document.getElementById('availabilityContainer');
+            const div = document.createElement('div');
+            div.className = 'availability-window';
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="availability-header">Day #${availabilityCount}</span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvailabilityWindow(this)">
+                        <i class="bi bi-trash-fill fs-6"></i> Delete
+                    </button>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label small">Date</label>
+                        <input type="date" class="form-control" name="dates" required>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label small">Start Time</label>
+                        <input type="time" class="form-control" name="startTimes" step="900" required>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label small">End Time</label>
+                        <input type="time" class="form-control" name="endTimes" step="900" required>
+                    </div>
+                </div>
+            `;
+            container.appendChild(div);
+        }
+
+        function removeAvailabilityWindow(button) {
+            const container = document.getElementById('availabilityContainer');
+            if (container.children.length > 1) {
+                button.closest('.availability-window').remove();
+                updateAvailabilityNumbers();
+            } else {
+                alert('At least one availability window is required');
+            }
+        }
+
+        function updateAvailabilityNumbers() {
+            const windows = document.querySelectorAll('.availability-window');
+            windows.forEach((window, index) => {
+                const header = window.querySelector('.availability-header');
+                header.textContent = `Date #${index + 1}`;
+            });
+            availabilityCount = windows.length;
+        }
+    </script>
+</body>
+</html>
