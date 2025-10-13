@@ -7,6 +7,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.SessionAttribute;
@@ -16,6 +17,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ed.iu.p566.scheduler_app.model.User;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup.AppointmentType;
 import ed.iu.p566.scheduler_app.repository.AppointmentGroupRepository;
+import ed.iu.p566.scheduler_app.repository.TimeSlotRepository;
+import ed.iu.p566.scheduler_app.utilities.TimeSlotUtility;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup;
 
 import java.time.LocalDate;
@@ -24,6 +27,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import org.springframework.web.bind.annotation.RequestParam;
 import ed.iu.p566.scheduler_app.model.AvailabilitySlot;
+import ed.iu.p566.scheduler_app.model.TimeSlot;
 
 
 @Controller
@@ -33,6 +37,9 @@ public class ProfessorController {
 
     @Autowired
     private AppointmentGroupRepository appointmentGroupRepository;
+
+    @Autowired
+    private TimeSlotRepository timeSlotRepository;
 
     @ModelAttribute(name = "types")
     public AppointmentType[] types() {
@@ -91,7 +98,7 @@ public class ProfessorController {
             return "redirect:/";
         }
         
-        //creating availability slots from the input arrays
+        //creating availability windows from the input arrays
         List<AvailabilitySlot> slots = new ArrayList<>();
         for (int i = 0; i < dates.length; i++) {
             AvailabilitySlot slot = new AvailabilitySlot(
@@ -103,19 +110,19 @@ public class ProfessorController {
             slots.add(slot);
         }
         
-        // checking no time slots overlap on the same date
+        // checking no availability windows overlap on the same date
         for (int i = 0; i < slots.size(); i++) {
             for (int j = i + 1; j < slots.size(); j++) {
                 if (slots.get(i).checkOverlap(slots.get(j))) {
                     redirectAttributes.addFlashAttribute("error", 
-                        "Time slots cannot overlap on the same date");
+                        "Availability windows cannot overlap on the same date");
                     return "redirect:/professor/appointments/create";
                 }
             }
         }
         
 
-        // earliest time slot date must be afer today
+        // earliest availability window date must be afer today
         LocalDate earliestDate = slots.stream()
                 .map(AvailabilitySlot::getDate)
                 .min(LocalDate::compareTo)
@@ -137,7 +144,10 @@ public class ProfessorController {
         appointmentGroup.setProfessorId(user.getId());
         appointmentGroup.setCreatedAt(LocalDateTime.now());
         
-        appointmentGroupRepository.save(appointmentGroup);
+        appointmentGroup = appointmentGroupRepository.save(appointmentGroup);
+
+        List<TimeSlot> timeSlots = TimeSlotUtility.generateTimeSlots(appointmentGroup);
+        timeSlotRepository.saveAll(timeSlots);
         
         System.out.println("Created appointment group with " + slots.size() + " availability slots");
         
@@ -145,6 +155,32 @@ public class ProfessorController {
         return "redirect:/dashboard";
     }
 
+    @GetMapping("/bookings/view/{id}")
+    public String viewBooking(
+            @SessionAttribute(value = "currentUser", required = false) User user,
+            @PathVariable Long id,
+            Model model,
+            RedirectAttributes redirectAttributes) {
+
+        if (user == null || user.getId() == null) {
+            redirectAttributes.addFlashAttribute("error", "Please login first");
+            return "redirect:/";
+        }
+
+        AppointmentGroup appointmentGroup = appointmentGroupRepository.findById(id).orElse(null);
+        if (appointmentGroup == null || !appointmentGroup.getProfessorId().equals(user.getId())) {
+            redirectAttributes.addFlashAttribute("error", "Appointment group not found or access denied");
+            return "redirect:/dashboard";
+        }
+
+        List<TimeSlot> timeSlots = timeSlotRepository.findByAppointmentGroupIdOrderByDateAscStartTimeAsc(id);
+
+        model.addAttribute("currentUser", user);
+        model.addAttribute("appointmentGroup", appointmentGroup);
+        model.addAttribute("timeSlots", timeSlots);
+
+        return "booking";
+    }
 
     
     // @PostMapping("/appointments/create")
