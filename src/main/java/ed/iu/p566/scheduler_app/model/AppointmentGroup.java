@@ -2,6 +2,10 @@ package ed.iu.p566.scheduler_app.model;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
@@ -44,26 +48,32 @@ public class AppointmentGroup {
     @NotNull
     private int durationPerSlot;
 
-    @NotNull(message = "Atleast one date is required")
-    private String dates;
-
-    @NotNull(message = "Atleast one time is required")
-    private String startTimes;
-
-    @NotNull(message = "Atleast one time is required")
-    private String endTimes;
-
-    public void setDates(String[] datesArray) {
-        this.dates = String.join(",", datesArray);
-    }
+    @Column(columnDefinition = "TEXT")
+    private String availabilitySlots;
     
-    public void setStartTimes(String[] startTimesArray) {
-        this.startTimes = String.join(",", startTimesArray);
+    public List<AvailabilitySlot> getAvailabilitySlots() {
+        if (availabilitySlots == null || availabilitySlots.isEmpty()) {
+            return new ArrayList<>();
+        }
+        
+        return Arrays.stream(availabilitySlots.split(";"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(AvailabilitySlot::fromStorageString)
+                .collect(Collectors.toList());
     }
-    
-    public void setEndTimes(String[] endTimesArray) {
-        this.endTimes = String.join(",", endTimesArray);
+
+    public void setAvailabilitySlots(List<AvailabilitySlot> slots) {
+        if (slots == null || slots.isEmpty()) {
+            this.availabilitySlots = "";
+            return;
+        }
+        
+        this.availabilitySlots = slots.stream()
+                .map(AvailabilitySlot::stringConverter)
+                .collect(Collectors.joining(";"));
     }
+
 
     public AppointmentGroup(Long professorId, String title, AppointmentType type, LocalDate startDate, LocalDate endDate, int durationMinutes) {
         this.professorId = professorId;

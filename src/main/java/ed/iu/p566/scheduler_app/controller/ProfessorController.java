@@ -1,8 +1,5 @@
 package ed.iu.p566.scheduler_app.controller;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,10 +14,16 @@ import org.springframework.web.bind.annotation.SessionAttributes;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import ed.iu.p566.scheduler_app.model.User;
-import jakarta.validation.Valid;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup.AppointmentType;
 import ed.iu.p566.scheduler_app.repository.AppointmentGroupRepository;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import org.springframework.web.bind.annotation.RequestParam;
+import ed.iu.p566.scheduler_app.model.AvailabilitySlot;
 
 
 @Controller
@@ -34,11 +37,6 @@ public class ProfessorController {
     @ModelAttribute(name = "types")
     public AppointmentType[] types() {
         return AppointmentType.values();
-    }
-
-    @ModelAttribute(name = "appointmentGroup")
-    public AppointmentGroup appointmentGroup() {
-        return new AppointmentGroup();
     }
 
     @GetMapping("/dashboard")
@@ -81,18 +79,45 @@ public class ProfessorController {
     @PostMapping("/appointments/create")
     public String createAppointmentGroup(
             @SessionAttribute(value = "currentUser", required = false) User user,
-            @Valid @ModelAttribute("appointmentGroup") AppointmentGroup appointmentGroup,
+            @RequestParam String title,
+            @RequestParam AppointmentType type,
+            @RequestParam int durationPerSlot,
+            @RequestParam String[] dates,
+            @RequestParam String[] startTimes,
+            @RequestParam String[] endTimes,
             RedirectAttributes redirectAttributes) {
-        
         
         if (user == null || user.getRole() != User.UserRole.PROFESSOR) {
             return "redirect:/";
         }
         
-        // Validating that availabilities can only be created for future dates (until a day before the first availability date)
-        String[] datesArray = appointmentGroup.getDates().split(",");
-        LocalDate earliestDate = Arrays.stream(datesArray)
-                .map(LocalDate::parse)
+        //creating availability slots from the input arrays
+        List<AvailabilitySlot> slots = new ArrayList<>();
+        for (int i = 0; i < dates.length; i++) {
+            AvailabilitySlot slot = new AvailabilitySlot(
+
+                LocalDate.parse(dates[i]),
+                LocalTime.parse(startTimes[i]),
+                LocalTime.parse(endTimes[i])
+            );
+            slots.add(slot);
+        }
+        
+        // checking no time slots overlap on the same date
+        for (int i = 0; i < slots.size(); i++) {
+            for (int j = i + 1; j < slots.size(); j++) {
+                if (slots.get(i).checkOverlap(slots.get(j))) {
+                    redirectAttributes.addFlashAttribute("error", 
+                        "Time slots cannot overlap on the same date");
+                    return "redirect:/professor/appointments/create";
+                }
+            }
+        }
+        
+
+        // earliest time slot date must be afer today
+        LocalDate earliestDate = slots.stream()
+                .map(AvailabilitySlot::getDate)
                 .min(LocalDate::compareTo)
                 .orElse(null);
         
@@ -100,19 +125,63 @@ public class ProfessorController {
             redirectAttributes.addFlashAttribute("error", "Earliest date must be in the future");
             return "redirect:/professor/appointments/create";
         }
-
+        
+        
+        
+        // creating appointment group object and saving to db
+        AppointmentGroup appointmentGroup = new AppointmentGroup();
+        appointmentGroup.setTitle(title);
+        appointmentGroup.setType(type);
+        appointmentGroup.setDurationPerSlot(durationPerSlot);
+        appointmentGroup.setAvailabilitySlots(slots);
         appointmentGroup.setProfessorId(user.getId());
         appointmentGroup.setCreatedAt(LocalDateTime.now());
-        System.out.println("Professor ID: " + appointmentGroup.getProfessorId() + ", Title: " + appointmentGroup.getTitle()  + ", Type: " + appointmentGroup.getType() + ", DurationPerSlot: " + appointmentGroup.getDurationPerSlot() + ", Dates: " + appointmentGroup.getDates() + ", StartTimes: " + appointmentGroup.getStartTimes() + ", EndTimes: " + appointmentGroup.getEndTimes());
-
         
         appointmentGroupRepository.save(appointmentGroup);
-
+        
+        System.out.println("Created appointment group with " + slots.size() + " availability slots");
+        
         redirectAttributes.addFlashAttribute("success", "Appointment group created successfully!");
         return "redirect:/dashboard";
-        
-        
     }
+
+
+    
+    // @PostMapping("/appointments/create")
+    // public String createAppointmentGroup(
+    //         @SessionAttribute(value = "currentUser", required = false) User user,
+    //         @Valid @ModelAttribute("appointmentGroup") AppointmentGroup appointmentGroup,
+    //         RedirectAttributes redirectAttributes) {
+        
+        
+    //     if (user == null || user.getRole() != User.UserRole.PROFESSOR) {
+    //         return "redirect:/";
+    //     }
+        
+    //     // Validating that availabilities can only be created for future dates (until a day before the first availability date)
+    //     String[] datesArray = appointmentGroup.getDates().split(",");
+    //     LocalDate earliestDate = Arrays.stream(datesArray)
+    //             .map(LocalDate::parse)
+    //             .min(LocalDate::compareTo)
+    //             .orElse(null);
+        
+    //     if (earliestDate != null && !earliestDate.isAfter(LocalDate.now())) {
+    //         redirectAttributes.addFlashAttribute("error", "Earliest date must be in the future");
+    //         return "redirect:/professor/appointments/create";
+    //     }
+
+    //     appointmentGroup.setProfessorId(user.getId());
+    //     appointmentGroup.setCreatedAt(LocalDateTime.now());
+    //     System.out.println("Professor ID: " + appointmentGroup.getProfessorId() + ", Title: " + appointmentGroup.getTitle()  + ", Type: " + appointmentGroup.getType() + ", DurationPerSlot: " + appointmentGroup.getDurationPerSlot() + ", Dates: " + appointmentGroup.getDates() + ", StartTimes: " + appointmentGroup.getStartTimes() + ", EndTimes: " + appointmentGroup.getEndTimes());
+
+        
+    //     appointmentGroupRepository.save(appointmentGroup);
+
+    //     redirectAttributes.addFlashAttribute("success", "Appointment group created successfully!");
+    //     return "redirect:/dashboard";
+        
+        
+    // }
 
     
 }
