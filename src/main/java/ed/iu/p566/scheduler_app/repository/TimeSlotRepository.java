@@ -15,4 +15,6 @@ public interface TimeSlotRepository extends CrudRepository<TimeSlot, Long> {
 
     List<TimeSlot> findByAppointmentGroupIdOrderByDateAscStartTimeAsc(Long appointmentGroupId);
 
+    boolean existsByAppointmentGroupIdAndBookedByUserId(Long appointmentGroupId, Long userId);
+
 }

@@ -37,7 +37,7 @@
                         Details:
                         <ul class="list-unstyled mb-0 small">
                             <li th:each="slot : ${appointmentGroup.availabilitySlots}">
-                                <span th:text="${slot.date}"></span>: 
+                                <span th:text="${#temporals.format(slot.date, 'MM/dd/yyyy')}"></span>: 
                                 <span th:text="${slot.startTime} + ' - ' + ${slot.endTime}"></span>
                             </li>
                         </ul>   
@@ -68,20 +68,20 @@
                         </thead>
 
                         <tbody>
-                            <tr th:each="slot, iterStat : ${timeSlots}">
-                                <td th:text="${iterStat.count}">1</td>
+                            <tr th:each="slot, iter : ${timeSlots}">
+                                <td th:text="${iter.count}">1</td>
                                 <td th:text="${#temporals.format(slot.date, 'MM/dd/yyyy')}">10/13/2025</td>
-                                <td th:text="${#temporals.format(slot.startTime, 'hh:mm a')}">12:00 PM</td>
-                                <td th:text="${#temporals.format(slot.endTime, 'hh:mm a')}">12:15 PM</td>
+                                <td th:text="${slot.startTime}">12:00 PM</td>
+                                <td th:text="${slot.endTime}">12:15 PM</td>
                                 <td>
 
                                     <span th:if="${slot.status.name() == 'AVAILABLE'}" 
-                                        class="badge bg-success">
+                                        class="badge text-success">
                                         <i class="bi bi-check-circle"></i> Available
                                     </span>
 
                                     <span th:if="${slot.status.name() == 'BOOKED'}" 
-                                        class="badge bg-danger">
+                                        class="badge text-danger">
                                         <i class="bi bi-x-circle"></i> Booked
                                     </span>
                                 </td>
@@ -96,7 +96,7 @@
         </div>
         <!-- Student UI  -->
         <div class="row justify-content-center" th:if="${currentUser.role.name() == 'STUDENT'}">
-        
+            
             <div class="d-flex justify-content-between align-items-center mb-3 border border-info p-3">
                 <div>
                     <h5 class="mb-1" th:text="${appointmentGroup.title}">Appointment Group Title</h5>
@@ -118,8 +118,9 @@
             </div>
 
             <div class="row border p-3">
+                <div class="alert alert-success" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></div>
+                <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
 
-                
                 <div th:if="${#lists.isEmpty(timeSlots)}" class="alert alert-info">
                     No time slots generated for this appointment group.
                 </div>
@@ -139,20 +140,28 @@
                         </thead>
 
                         <tbody>
-                            <tr th:each="slot, iterStat : ${timeSlots}">
-                                <td th:text="${iterStat.count}">1</td>
+                            <tr th:each="slot, iter : ${timeSlots}"
+                            th:data-slot-id="${slot.id}"
+                            th:data-slot-date="${slot.date}"
+                            th:data-slot-start="${slot.startTime}"
+                            th:data-slot-end="${slot.endTime}"
+                            th:data-slot-status="${slot.status.name()}"
+                            th:data-group-title="${appointmentGroup.title}"
+                            th:classappend="${slot.status.name() == 'AVAILABLE' ? 'slot-available' : ''}"
+                            th:style="${slot.status.name() == 'AVAILABLE' ? 'cursor: pointer;' : ''}">
+                                <td th:text="${iter.count}">1</td>
                                 <td th:text="${#temporals.format(slot.date, 'MM/dd/yyyy')}">10/13/2025</td>
-                                <td th:text="${#temporals.format(slot.startTime, 'hh:mm a')}">12:00 PM</td>
-                                <td th:text="${#temporals.format(slot.endTime, 'hh:mm a')}">12:15 PM</td>
+                                <td th:text="${slot.startTime}">12:00 PM</td>
+                                <td th:text="${slot.endTime}">12:15 PM</td>
                                 <td>
 
                                     <span th:if="${slot.status.name() == 'AVAILABLE'}" 
-                                        class="badge bg-success">
+                                        class="badge text-success">
                                         <i class="bi bi-check-circle"></i> Available
                                     </span>
 
                                     <span th:if="${slot.status.name() == 'BOOKED'}" 
-                                        class="badge bg-danger">
+                                        class="badge text-danger">
                                         <i class="bi bi-x-circle"></i> Booked
                                     </span>
                                 </td>
@@ -164,9 +173,55 @@
 
                 
             </div>
+
+            <!-- Booking Confirmation Modal -->
+            <div class="modal fade" id="bookingModal" tabindex="-1" aria-labelledby="bookingModalLabel" aria-hidden="true">
+                <div class="modal-dialog text-align-center">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="bookingModalLabel">Confirm Booking</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            Please confirm your booking for the following time slot:
+                            <div class="border p-2 bg-dark">
+                                <h5 class="mb-2"><strong><span id="group-title"></span></strong></h5>
+                                <p class="mb-1"><strong>Date:</strong> <span id="modal-date"></span></p>
+                                <p class="mb-1"><strong>Time:</strong> <span id="modal-start"></span> - <span id="modal-end"></span></p>
+                            </div>
+                            <form action="/student/bookings/book" method="post" id="bookingForm">
+                                <input type="hidden" name="slotId" id="slot-id">
+                            </form>
+                        </div>
+                        <div class="modal-footer justify-content-center">
+                            <button type="submit" form="bookingForm" class="btn btn-outline-success">Confirm Booking</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const availableSlots = document.querySelectorAll('.slot-available');
+        const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+        
+        availableSlots.forEach(function(row) {
+            row.addEventListener('click', function() {
+                document.getElementById('group-title').textContent = this.getAttribute('data-group-title');
+                document.getElementById('slot-id').value = this.getAttribute('data-slot-id');
+                document.getElementById('modal-date').textContent = this.getAttribute('data-slot-date');
+                document.getElementById('modal-start').textContent = this.getAttribute('data-slot-start');
+                document.getElementById('modal-end').textContent = this.getAttribute('data-slot-end');
+                bookingModal.show();
+            });
+        });
+    });
+</script>
         
 </body>
 </html>

@@ -223,33 +223,3 @@ public class ProfessorController {
 }
 
 
-
-// @GetMapping("/professor")
-//     public String viewProfessorDashboard(
-//             @SessionAttribute(value = "currentUser", required = false) User user,
-//             Model model,
-//             RedirectAttributes redirectAttributes) {
-        
-//         if (user == null || user.getId() == null) {
-//             redirectAttributes.addFlashAttribute("error", "Please login first");
-//             return "redirect:/";
-//         }
-        
-//         model.addAttribute("currentUser", user);
-//         return "dashboard";
-//     }
-
-//     @GetMapping("/ta")
-//     public String viewTADashboard(
-//             @SessionAttribute(value = "currentUser", required = false) User user,
-//             Model model,
-//             RedirectAttributes redirectAttributes) {
-        
-//         if (user == null || user.getId() == null) {
-//             redirectAttributes.addFlashAttribute("error", "Please login first");
-//             return "redirect:/";
-//         }
-        
-//         model.addAttribute("currentUser", user);
-//         return "dashboard";
-//     }
