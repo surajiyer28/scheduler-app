@@ -2,6 +2,8 @@ package ed.iu.p566.scheduler_app.controller;
 
 
 import java.util.List;
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -46,29 +48,51 @@ public class ProfessorController {
         return AppointmentType.values();
     }
 
+    @ModelAttribute("appointmentGroups")
+    public List<AppointmentGroup> getAppointmentGroups(
+            @SessionAttribute(value = "currentUser", required = false) User user) {
+        if (user == null || user.getId() == null) {
+            return new ArrayList<>(); 
+        }
+        return appointmentGroupRepository.getAppointmentGroupsByProfessorId(user.getId());
+    }
+
     @GetMapping("/dashboard")
     public String viewDashboard(
             @SessionAttribute(value = "currentUser", required = false) User user,
-            Model model,
             RedirectAttributes redirectAttributes) {
-        
         
         if (user == null || user.getId() == null) {
             redirectAttributes.addFlashAttribute("error", "Please login first");
             return "redirect:/";
         }
-
-        List<AppointmentGroup> appointmentGroups = appointmentGroupRepository.getAppointmentGroupsByProfessorId(user.getId());
-        model.addAttribute("currentUser", user);
-        model.addAttribute("appointmentGroups", appointmentGroups);
-
+        
         return "dashboard";
     }
+
+    // @GetMapping("/dashboard")
+    // public String viewDashboard(
+    //         @SessionAttribute(value = "currentUser", required = false) User user,
+    //         Model model,
+    //         RedirectAttributes redirectAttributes) {
+        
+        
+    //     if (user == null || user.getId() == null) {
+    //         redirectAttributes.addFlashAttribute("error", "Please login first");
+    //         return "redirect:/";
+    //     }
+
+    //     List<AppointmentGroup> appointmentGroups = appointmentGroupRepository.getAppointmentGroupsByProfessorId(user.getId());
+    //     model.addAttribute("currentUser", user);
+    //     model.addAttribute("appointmentGroups", appointmentGroups);
+
+    //     return "dashboard";
+    // }
 
     @GetMapping("/appointments/create")
     public String viewCreateAppointments(
             @SessionAttribute(value = "currentUser", required = false) User user,
-            Model model,
+            // Model model,
             RedirectAttributes redirectAttributes) {
         
         
@@ -78,7 +102,7 @@ public class ProfessorController {
         }
         
         
-        model.addAttribute("currentUser", user);
+        // model.addAttribute("currentUser", user);
         
         return "create-appointment";
     }
@@ -149,9 +173,9 @@ public class ProfessorController {
         List<TimeSlot> timeSlots = TimeSlotUtility.generateTimeSlots(appointmentGroup);
         timeSlotRepository.saveAll(timeSlots);
         
-        System.out.println("Created appointment group with " + slots.size() + " availability slots");
+        // System.out.println("Created appointment group with " + slots.size() + " availability slots");
         
-        redirectAttributes.addFlashAttribute("success", "Appointment group created successfully!");
+        redirectAttributes.addFlashAttribute("message", "Appointment group created successfully!");
         return "redirect:/dashboard";
     }
 
@@ -175,50 +199,72 @@ public class ProfessorController {
 
         List<TimeSlot> timeSlots = timeSlotRepository.findByAppointmentGroupIdOrderByDateAscStartTimeAsc(id);
 
-        model.addAttribute("currentUser", user);
+        // model.addAttribute("currentUser", user);
         model.addAttribute("appointmentGroup", appointmentGroup);
         model.addAttribute("timeSlots", timeSlots);
 
         return "booking";
     }
 
-    
-    // @PostMapping("/appointments/create")
-    // public String createAppointmentGroup(
-    //         @SessionAttribute(value = "currentUser", required = false) User user,
-    //         @Valid @ModelAttribute("appointmentGroup") AppointmentGroup appointmentGroup,
-    //         RedirectAttributes redirectAttributes) {
-        
-        
-    //     if (user == null || user.getRole() != User.UserRole.PROFESSOR) {
-    //         return "redirect:/";
-    //     }
-        
-    //     // Validating that availabilities can only be created for future dates (until a day before the first availability date)
-    //     String[] datesArray = appointmentGroup.getDates().split(",");
-    //     LocalDate earliestDate = Arrays.stream(datesArray)
-    //             .map(LocalDate::parse)
-    //             .min(LocalDate::compareTo)
-    //             .orElse(null);
-        
-    //     if (earliestDate != null && !earliestDate.isAfter(LocalDate.now())) {
-    //         redirectAttributes.addFlashAttribute("error", "Earliest date must be in the future");
-    //         return "redirect:/professor/appointments/create";
-    //     }
+    // this method is used to make a timeslot unavailable for booking
+    @PostMapping("/bookings/cancel")
+    public String cancelBooking(
+            @SessionAttribute(value = "currentUser", required = false) User user,
+            @RequestParam Long slotId,
+            RedirectAttributes redirectAttributes) {
+        if (user == null || user.getId() == null) {
+            redirectAttributes.addFlashAttribute("error", "Please login first");
+            return "redirect:/";
+        }
+        // System.out.println("THE SLOT WAS CANCELLED***************************************************");
+        TimeSlot timeSlot = timeSlotRepository.findById(slotId).orElse(null);
+        if (timeSlot == null) {
+            redirectAttributes.addFlashAttribute("error", "Time slot not found");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
 
-    //     appointmentGroup.setProfessorId(user.getId());
-    //     appointmentGroup.setCreatedAt(LocalDateTime.now());
-    //     System.out.println("Professor ID: " + appointmentGroup.getProfessorId() + ", Title: " + appointmentGroup.getTitle()  + ", Type: " + appointmentGroup.getType() + ", DurationPerSlot: " + appointmentGroup.getDurationPerSlot() + ", Dates: " + appointmentGroup.getDates() + ", StartTimes: " + appointmentGroup.getStartTimes() + ", EndTimes: " + appointmentGroup.getEndTimes());
-
+        if (timeSlot.getStatus() != TimeSlot.BookingStatus.BOOKED && timeSlot.getStatus() != TimeSlot.BookingStatus.AVAILABLE) {
+            redirectAttributes.addFlashAttribute("error", "Time slot is already inactive");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
         
-    //     appointmentGroupRepository.save(appointmentGroup);
+        timeSlot.setStatus(TimeSlot.BookingStatus.CANCELLED);
+        timeSlot.setBookedByUserId(null);
+        timeSlotRepository.save(timeSlot);
 
-    //     redirectAttributes.addFlashAttribute("success", "Appointment group created successfully!");
-    //     return "redirect:/dashboard";
-        
-        
-    // }
+        redirectAttributes.addFlashAttribute("message", "Time slot cancelled successfully");
+        return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+    }
 
+    // this method is used to make a timeslot available for booking again
+    @PostMapping("/bookings/avail")
+    public String availBooking(
+            @SessionAttribute(value = "currentUser", required = false) User user,
+            @RequestParam Long slotId,
+            RedirectAttributes redirectAttributes) {
+        if (user == null || user.getId() == null) {
+            redirectAttributes.addFlashAttribute("error", "Please login first");
+            return "redirect:/";
+        }
+        // System.out.println("THE SLOT WAS CANCELLED***************************************************");
+        TimeSlot timeSlot = timeSlotRepository.findById(slotId).orElse(null);
+        if (timeSlot == null) {
+            redirectAttributes.addFlashAttribute("error", "Time slot not found");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
+
+        if (timeSlot.getStatus() != TimeSlot.BookingStatus.CANCELLED) {
+            redirectAttributes.addFlashAttribute("error", "Time slot is already active");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
+        
+        timeSlot.setStatus(TimeSlot.BookingStatus.AVAILABLE);
+        timeSlot.setBookedByUserId(null);
+        timeSlotRepository.save(timeSlot);
+
+        redirectAttributes.addFlashAttribute("message", "Time slot cancelled successfully");
+        return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+    }
     
 }
 

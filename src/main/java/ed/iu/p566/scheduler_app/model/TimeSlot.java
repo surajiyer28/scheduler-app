@@ -26,6 +26,7 @@ public class TimeSlot {
     @NotNull
     private Long appointmentGroupId;
 
+
     @NotNull
     private LocalDate date;
 
@@ -57,4 +58,6 @@ public class TimeSlot {
         this.endTime = endTime;
         this.status = BookingStatus.AVAILABLE;
     }
+
+
 }
