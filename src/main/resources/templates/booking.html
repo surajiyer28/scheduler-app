@@ -24,7 +24,7 @@
 
         <!-- Professor UI  -->
 
-        <div class="row justify-content-center" th:if="${currentUser.role.name() == 'PROFESSOR'}">
+        <div class="row justify-content-center" th:if="${currentUser.role.name() == 'PROFESSOR' || currentUser.role.name() == 'TA'}">
         
             <div class="d-flex justify-content-between align-items-center mb-3 border border-info p-3">
                 <div>
@@ -52,7 +52,8 @@
                 <div th:if="${#lists.isEmpty(timeSlots)}" class="alert alert-info">
                     No time slots generated for this appointment group.
                 </div>
-
+                <div class="alert alert-success" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></div>
+                <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
                 
                 <div th:if="${!#lists.isEmpty(timeSlots)}" class="table-responsive">
                     <table class="table table-hover table-striped">
@@ -126,7 +127,7 @@
                                 <input type="hidden" name="slotId" id="slot-id">
                             </form>
                         </div>
-                        <div class="modal-footer justify-content-center">
+                        <div  th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-footer justify-content-center">
                             <button type="submit" form="availProfForm" class="btn btn-outline-success">Make Available</button>
                         </div>
                     </div>
@@ -152,7 +153,7 @@
                                 <input type="hidden" name="slotId" id="c-slot-id">
                             </form>
                         </div>
-                        <div class="modal-footer justify-content-center">
+                        <div th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-footer justify-content-center">
                             <button type="submit" form="cancelProfForm" class="btn btn-outline-danger">Make Unavailable</button>
                         </div>
                     </div>
