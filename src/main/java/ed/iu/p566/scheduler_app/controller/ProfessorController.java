@@ -2,6 +2,7 @@ package ed.iu.p566.scheduler_app.controller;
 
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -19,6 +20,7 @@ import ed.iu.p566.scheduler_app.model.User;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup.AppointmentType;
 import ed.iu.p566.scheduler_app.repository.AppointmentGroupRepository;
 import ed.iu.p566.scheduler_app.repository.TimeSlotRepository;
+import ed.iu.p566.scheduler_app.repository.UserRepository;
 import ed.iu.p566.scheduler_app.utilities.TimeSlotUtility;
 import ed.iu.p566.scheduler_app.model.AppointmentGroup;
 
@@ -41,6 +43,9 @@ public class ProfessorController {
 
     @Autowired
     private TimeSlotRepository timeSlotRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @ModelAttribute(name = "types")
     public AppointmentType[] types() {
@@ -197,6 +202,16 @@ public class ProfessorController {
         }
 
         List<TimeSlot> timeSlots = timeSlotRepository.findByAppointmentGroupIdOrderByDateAscStartTimeAsc(id);
+
+        for (TimeSlot slot : timeSlots) {
+            if (slot.getStatus() == TimeSlot.BookingStatus.BOOKED && slot.getBookedByUserId() != null) {
+                Optional<User> bookedByUser = userRepository.findById(slot.getBookedByUserId());
+                if (bookedByUser.isPresent()) {
+                    slot.setBookedByUserName(bookedByUser.get().getName());
+                    slot.setBookedByUserEmail(bookedByUser.get().getEmail());
+                }
+            }
+        }
 
         // model.addAttribute("currentUser", user);
         model.addAttribute("appointmentGroup", appointmentGroup);

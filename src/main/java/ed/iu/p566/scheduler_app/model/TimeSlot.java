@@ -51,6 +51,12 @@ public class TimeSlot {
     @Column(columnDefinition = "TEXT")
     private String groupMemberIds;
 
+    @Transient
+    private String bookedByUserName;
+    
+    @Transient
+    private String bookedByUserEmail;
+
     public TimeSlot(Long appointmentGroupId, LocalDate date, LocalTime startTime, LocalTime endTime) {
         this.appointmentGroupId = appointmentGroupId;
         this.date = date;

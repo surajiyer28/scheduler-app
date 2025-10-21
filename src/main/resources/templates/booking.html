@@ -76,6 +76,8 @@
                             th:data-slot-end="${slot.endTime}"
                             th:data-slot-status="${slot.status.name()}"
                             th:data-group-title="${appointmentGroup.title}"
+                            th:data-booked-by="${slot.bookedByUserName != null ? slot.bookedByUserName : 'N/A'}"
+                            th:data-booked-email="${slot.bookedByUserEmail != null ? slot.bookedByUserEmail : 'N/A'}"
                             th:classappend="${slot.status.name() == 'AVAILABLE' ? 'slot-active' : slot.status.name() == 'BOOKED' ? 'slot-active' : 'slot-inactive'}"
                             style = "cursor:pointer">
                                 <td th:text="${iter.count}">1</td>
@@ -139,15 +141,18 @@
                 <div class="modal-dialog text-align-center">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="cancelProfModalLabel">Confirm Action</h5>
+                            <h5 th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-title" id="cancelProfModalLabel">Confirm Action</h5>
+                            <h5 th:if="${currentUser.role.name() == 'TA'}" class="modal-title" id="cancelProfModalLabel">Slot Details</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            Please confirm you want to mark this slot Unavailable:
+                            <span th:if="${currentUser.role.name() == 'PROFESSOR'}">Please confirm you want to mark this slot Unavailable:</span>
                             <div class="border p-2 bg-dark">
                                 <h5 class="mb-2"><strong><span id="c-group-title"></span></strong></h5>
                                 <p class="mb-1"><strong>Date:</strong> <span id="c-modal-date"></span></p>
                                 <p class="mb-1"><strong>Time:</strong> <span id="c-modal-start"></span> - <span id="c-modal-end"></span></p>
+                                <p class="mb-1 mt-2"><strong>Booked by:</strong> <span id="c-booked-by"></span></p>
+                                <p class="mb-1"><strong>Email:</strong> <span id="c-booked-email"></span></p>
                             </div>
                             <form action="/professor/bookings/cancel" method="post" id="cancelProfForm">
                                 <input type="hidden" name="slotId" id="c-slot-id">
@@ -316,7 +321,9 @@
                 document.getElementById('c-slot-id').value = this.getAttribute('data-slot-id');
                 document.getElementById('c-modal-date').textContent = this.getAttribute('data-slot-date');
                 document.getElementById('c-modal-start').textContent = this.getAttribute('data-slot-start');
-                document.getElementById('c-modal-end').textContent = this.getAttribute('data-slot-end');
+                document.getElementById('c-modal-end').textContent = this.getAttribute('data-slot-end');                
+                document.getElementById('c-booked-by').textContent = this.getAttribute('data-booked-by');
+                document.getElementById('c-booked-email').textContent = this.getAttribute('data-booked-email');
                 
                 cancelProfModal.show();
 
