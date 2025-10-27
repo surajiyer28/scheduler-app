@@ -22,6 +22,7 @@ public class TimeSlotUtility {
         List<AvailabilitySlot> availabilitySlots = appointmentGroup.getAvailabilitySlots();
         int durationPerSlot = appointmentGroup.getDurationPerSlot();
         Long appointmentGroupId = appointmentGroup.getId();
+        int gapBetweenSlots = appointmentGroup.getGapBetweenSlots();
         
         for (AvailabilitySlot availabilitySlot : availabilitySlots) {
             LocalDate date = availabilitySlot.getDate();
@@ -39,7 +40,8 @@ public class TimeSlotUtility {
                 
                 timeSlots.add(timeSlot);
                 
-                slotStart = slotEnd;
+                // slotStart = slotEnd;
+                slotStart = slotEnd.plusMinutes(gapBetweenSlots);
             }
         }
         

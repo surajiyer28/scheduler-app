@@ -117,6 +117,7 @@ public class ProfessorController {
             @RequestParam String title,
             @RequestParam AppointmentType type,
             @RequestParam int durationPerSlot,
+            @RequestParam(defaultValue = "0") int gapBetweenSlots,
             @RequestParam String[] dates,
             @RequestParam String[] startTimes,
             @RequestParam String[] endTimes,
@@ -168,6 +169,7 @@ public class ProfessorController {
         appointmentGroup.setTitle(title);
         appointmentGroup.setType(type);
         appointmentGroup.setDurationPerSlot(durationPerSlot);
+        appointmentGroup.setGapBetweenSlots(gapBetweenSlots);
         appointmentGroup.setAvailabilitySlots(slots);
         appointmentGroup.setProfessorId(user.getId());
         appointmentGroup.setCreatedAt(LocalDateTime.now());
@@ -209,6 +211,22 @@ public class ProfessorController {
                 if (bookedByUser.isPresent()) {
                     slot.setBookedByUserName(bookedByUser.get().getName());
                     slot.setBookedByUserEmail(bookedByUser.get().getEmail());
+                }
+                if (appointmentGroup.getType() == AppointmentGroup.AppointmentType.GROUP) {
+                    List<Long> memberIds = slot.getGroupMemberIdsList();
+                    if (!memberIds.isEmpty()) {
+                        List<String> memberNames = new ArrayList<>();
+                        for (Long memberId : memberIds) {
+                            Optional<User> member = userRepository.findById(memberId);
+                            if (member.isPresent()) {
+                                memberNames.add(member.get().getName());
+                            }
+                        }
+
+                        if (!memberNames.isEmpty()) {
+                            slot.setBookedByUserEmail(slot.getBookedByUserEmail() + "||" + String.join(", ", memberNames));
+                        }
+                    }
                 }
             }
         }
@@ -252,6 +270,7 @@ public class ProfessorController {
         
         timeSlot.setStatus(TimeSlot.BookingStatus.CANCELLED);
         timeSlot.setBookedByUserId(null);
+        timeSlot.setGroupMemberIdsList(new ArrayList<>());  
         timeSlotRepository.save(timeSlot);
 
         redirectAttributes.addFlashAttribute("message", "Time slot cancelled successfully");

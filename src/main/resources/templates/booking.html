@@ -22,7 +22,7 @@
 
     <div class="container mt-5">
 
-        <!-- Professor UI  -->
+        <!-- Professor/TA UI  -->
 
         <div class="row justify-content-center" th:if="${currentUser.role.name() == 'PROFESSOR' || currentUser.role.name() == 'TA'}">
         
@@ -31,7 +31,9 @@
                     <h5 class="mb-1" th:text="${appointmentGroup.title}">Appointment Group Title</h5>
                     <p class="mb-0 small text-muted">
                         <strong>Type:</strong> <span th:text="${appointmentGroup.type}"></span> | 
-                        <strong>Duration:</strong> <span th:text="${appointmentGroup.durationPerSlot} + ' minutes'"></span>
+                        <strong>Duration:</strong> <span th:text="${appointmentGroup.durationPerSlot} + ' minutes'"></span> | 
+                        <strong>Gap:</strong> <span th:text="${appointmentGroup.gapBetweenSlots} + ' minutes'"></span>
+
                     </p>
                     <small>
                         Details:
@@ -141,18 +143,22 @@
                 <div class="modal-dialog text-align-center">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-title" id="cancelProfModalLabel">Confirm Action</h5>
-                            <h5 th:if="${currentUser.role.name() == 'TA'}" class="modal-title" id="cancelProfModalLabel">Slot Details</h5>
+                            <h5 th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-title" id="cancelProfModalLabel">Booking Details</h5>
+                            <h5 th:if="${currentUser.role.name() == 'TA'}" class="modal-title" id="cancelProfModalLabel">Booking Details</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            <span th:if="${currentUser.role.name() == 'PROFESSOR'}">Please confirm you want to mark this slot Unavailable:</span>
                             <div class="border p-2 bg-dark">
                                 <h5 class="mb-2"><strong><span id="c-group-title"></span></strong></h5>
                                 <p class="mb-1"><strong>Date:</strong> <span id="c-modal-date"></span></p>
                                 <p class="mb-1"><strong>Time:</strong> <span id="c-modal-start"></span> - <span id="c-modal-end"></span></p>
                                 <p class="mb-1 mt-2"><strong>Booked by:</strong> <span id="c-booked-by"></span></p>
                                 <p class="mb-1"><strong>Email:</strong> <span id="c-booked-email"></span></p>
+                                <div id="c-group-members-section" style="display: none;" class="mt-2">
+                                    <p class="mb-1"><strong>Group Members:</strong></p>
+                                    <ul id="c-group-members-list" class="mb-0 small">
+                                    </ul>
+                                </div>
                             </div>
                             <form action="/professor/bookings/cancel" method="post" id="cancelProfForm">
                                 <input type="hidden" name="slotId" id="c-slot-id">
@@ -266,8 +272,21 @@
                                 <p class="mb-1"><strong>Date:</strong> <span id="modal-date"></span></p>
                                 <p class="mb-1"><strong>Time:</strong> <span id="modal-start"></span> - <span id="modal-end"></span></p>
                             </div>
+                            <!-- Drop down to select memebrs for group appointment booking -->
+                            <div th:if="${appointmentGroup.type.name() == 'GROUP'}" class="mt-3">
+                                <label for="groupMembersSelect" class="form-label">
+                                    <strong>Select members:</strong>
+                                </label>
+                                <select multiple class="form-select" id="groupMembersSelect" name="groupMembers" size="6">
+                                    <option th:each="student : ${otherStudents}" 
+                                            th:value="${student.id}" 
+                                            th:text="${student.name}">
+                                    </option>
+                                </select>
+                            </div>
                             <form action="/student/bookings/book" method="post" id="bookingForm">
                                 <input type="hidden" name="slotId" id="slot-id">
+                                <input type="hidden" name="groupMembers" id="group-members-hidden">
                             </form>
                         </div>
                         <div class="modal-footer justify-content-center">
@@ -282,11 +301,10 @@
                 <div class="modal-dialog text-align-center">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title" id="cancelModalLabel">Confirm Cancellation</h5>
+                            <h5 class="modal-title" id="cancelModalLabel">Booking Details</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                            Please confirm your cancellation for the following time slot:
                             <div class="border p-2 bg-dark">
                                 <h5 class="mb-2"><strong><span id="c-group-title"></span></strong></h5>
                                 <p class="mb-1"><strong>Date:</strong> <span id="c-modal-date"></span></p>
@@ -297,7 +315,7 @@
                             </form>
                         </div>
                         <div class="modal-footer justify-content-center">
-                            <button type="submit" form="cancelForm" class="btn btn-outline-danger">Confirm Cancellation</button>
+                            <button type="submit" form="cancelForm" class="btn btn-outline-danger">Cancel Booking</button>
                         </div>
                     </div>
                 </div>
@@ -322,8 +340,33 @@
                 document.getElementById('c-modal-date').textContent = this.getAttribute('data-slot-date');
                 document.getElementById('c-modal-start').textContent = this.getAttribute('data-slot-start');
                 document.getElementById('c-modal-end').textContent = this.getAttribute('data-slot-end');                
-                document.getElementById('c-booked-by').textContent = this.getAttribute('data-booked-by');
-                document.getElementById('c-booked-email').textContent = this.getAttribute('data-booked-email');
+                const bookedByData = this.getAttribute('data-booked-by');
+                const bookedEmailData = this.getAttribute('data-booked-email');
+                
+                document.getElementById('c-booked-by').textContent = bookedByData;
+                
+                if (bookedEmailData && bookedEmailData.includes('||')) {
+                    const parts = bookedEmailData.split('||');
+                    const email = parts[0];
+                    const groupMembers = parts[1];
+                    
+                    document.getElementById('c-booked-email').textContent = email;
+    
+                    document.getElementById('c-group-members-section').style.display = 'block';
+
+                    const membersList = document.getElementById('c-group-members-list');
+                    membersList.innerHTML = '';
+                    const members = groupMembers.split(', ');
+                    members.forEach(member => {
+                        const li = document.createElement('li');
+                        li.textContent = member;
+                        membersList.appendChild(li);
+                    });
+                } else {
+
+                    document.getElementById('c-booked-email').textContent = bookedEmailData;
+                    document.getElementById('c-group-members-section').style.display = 'none';
+                }
                 
                 cancelProfModal.show();
 
@@ -355,6 +398,7 @@
     document.addEventListener('DOMContentLoaded', function() {
         const availableSlots = document.querySelectorAll('.slot-available');
         const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+        const bookingForm = document.getElementById('bookingForm');
 
         
         availableSlots.forEach(function(row) {
@@ -369,6 +413,17 @@
 
             });
         });
+
+        bookingForm.addEventListener('submit', function(e) {
+            const groupMembersSelect = document.getElementById('groupMembersSelect');
+            if (groupMembersSelect) {
+                const selectedIds = Array.from(groupMembersSelect.selectedOptions)
+                    .map(option => option.value)
+                    .join(',');
+                document.getElementById('group-members-hidden').value = selectedIds;
+            }
+        });
+
     });
 
     // Cancel Booking Modal Script

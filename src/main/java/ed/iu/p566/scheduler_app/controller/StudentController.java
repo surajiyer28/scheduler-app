@@ -3,8 +3,10 @@ package ed.iu.p566.scheduler_app.controller;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -24,6 +26,7 @@ import ed.iu.p566.scheduler_app.model.TimeSlot;
 import ed.iu.p566.scheduler_app.model.User;
 import ed.iu.p566.scheduler_app.repository.AppointmentGroupRepository;
 import ed.iu.p566.scheduler_app.repository.TimeSlotRepository;
+import ed.iu.p566.scheduler_app.repository.UserRepository;
 
 
 @Controller
@@ -36,6 +39,9 @@ public class StudentController {
 
     @Autowired
     private TimeSlotRepository timeSlotRepository;
+
+    @Autowired
+    private UserRepository userRepository;
     
 
     @ModelAttribute("appointmentGroups")
@@ -49,28 +55,40 @@ public class StudentController {
 
 
     @ModelAttribute("upcomingAppointments")
-    public List<Map<String,Object>> getUpcomingAppointments(
-            @SessionAttribute(value = "currentUser", required = false) User user) {
+    public List<Map<String,Object>> getUpcomingAppointments(@SessionAttribute(value = "currentUser", required = false) User user) {
+
+
         if (user == null || user.getId() == null) {
             return new ArrayList<>();
         }
 
-        List<TimeSlot> upcomingAppointments = timeSlotRepository.findByBookedByUserIdAndDateGreaterThanEqualOrderByDateAscStartTimeAsc(user.getId(), LocalDate.now());
+        LocalDate curr_date = LocalDate.now();
+        LocalTime curr_time = LocalTime.now();
+        
+        // List<TimeSlot> upcomingAppointments = timeSlotRepository.findByBookedByUserIdAndDateGreaterThanEqualOrderByDateAscStartTimeAsc(user.getId(), LocalDate.now());
+        List<TimeSlot> allBookedSlots = timeSlotRepository.findByStatusAndDateGreaterThanEqualOrderByDateAscStartTimeAsc(TimeSlot.BookingStatus.BOOKED, curr_date);
         List<Map<String,Object>> slotsWithTitle = new ArrayList<>();
 
-        for (TimeSlot slot :upcomingAppointments) {
-            if (slot.getDate().isBefore(LocalDate.now()) || 
-                (slot.getDate().isEqual(LocalDate.now()) && slot.getEndTime().isBefore(LocalTime.now()))) {
-                continue; // skip past appointments
+        for (TimeSlot slot :allBookedSlots) {
+            if (slot.getDate().isEqual(curr_date) && slot.getEndTime().isBefore(curr_time)) {
+                continue;
             }
-            Map<String,Object> slotInfo = Map.of(
-                "id", slot.getId(),
-                "date", slot.getDate(),
-                "startTime", slot.getStartTime(),
-                "endTime", slot.getEndTime(),
-                "appointmentGroup", appointmentGroupRepository.findById(slot.getAppointmentGroupId()).orElse(null)
-            );
-            slotsWithTitle.add(slotInfo);
+
+            boolean isBooker = slot.getBookedByUserId() != null && slot.getBookedByUserId().equals(user.getId());
+            boolean isMember = slot.getGroupMemberIdsList().contains(user.getId());
+
+            if (isBooker || isMember) {
+                AppointmentGroup group = appointmentGroupRepository.findById(slot.getAppointmentGroupId()).orElse(null);
+                
+                Map<String,Object> slotInfo = Map.of(
+                    "id", slot.getId(),
+                    "date", slot.getDate(),
+                    "startTime", slot.getStartTime(),
+                    "endTime", slot.getEndTime(),
+                    "appointmentGroup", group != null ? group : new AppointmentGroup()
+                );
+                slotsWithTitle.add(slotInfo);  
+            }
         }
 
         // System.out.println("Upcoming appointments for user " + user.getId() + ": " + upcomingAppointments);
@@ -112,6 +130,12 @@ public class StudentController {
 
         List<TimeSlot> timeSlots = timeSlotRepository.findByAppointmentGroupIdOrderByDateAscStartTimeAsc(id);
 
+        // for group bookings
+        if (appointmentGroup.getType() == AppointmentGroup.AppointmentType.GROUP) {
+            List<User> otherStudents = userRepository.findAllStudentsExcept(user.getId());
+            model.addAttribute("otherStudents", otherStudents);
+        }
+
         // model.addAttribute("currentUser", user);
         model.addAttribute("appointmentGroup", appointmentGroup);
         model.addAttribute("timeSlots", timeSlots);
@@ -125,7 +149,9 @@ public class StudentController {
     public String bookSlot(
             @SessionAttribute(value = "currentUser", required = false) User user,
             @RequestParam Long slotId,
+            @RequestParam(required = false) String groupMembers,      //group bookings      
             RedirectAttributes redirectAttributes) {
+
         if (user == null || user.getId() == null) {
             redirectAttributes.addFlashAttribute("error", "Please login first");
             return "redirect:/";
@@ -136,18 +162,58 @@ public class StudentController {
             redirectAttributes.addFlashAttribute("error", "Time slot not found");
             return "redirect:/student/dashboard";
         }
+
+        AppointmentGroup appointmentGroup = appointmentGroupRepository.findById(timeSlot.getAppointmentGroupId()).orElse(null);
+        if (appointmentGroup == null) {
+            redirectAttributes.addFlashAttribute("error", "Appointment group not found");
+            return "redirect:/student/dashboard";
+        }
+
+        if (timeSlot.getStatus() != TimeSlot.BookingStatus.AVAILABLE) {
+            redirectAttributes.addFlashAttribute("error", "Time slot already booked");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();        
+        }
         
         // one booking per user - need to update this for group appointment booking
-        boolean userBooked = timeSlotRepository.existsByAppointmentGroupIdAndBookedByUserId(timeSlot.getAppointmentGroupId(), user.getId());
+        // boolean userBooked = timeSlotRepository.existsByAppointmentGroupIdAndBookedByUserId(timeSlot.getAppointmentGroupId(), user.getId());
+        boolean userBooked = timeSlotRepository.isUserInAnyBookingInGroup(timeSlot.getAppointmentGroupId(), user.getId());
 
         if (userBooked) {
             redirectAttributes.addFlashAttribute("error", "You have already booked a time slot in this appointment group. Cancel your existing booking to book a new one.");
             return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();        
         }
 
-        if (timeSlot.getStatus() != TimeSlot.BookingStatus.AVAILABLE) {
-            redirectAttributes.addFlashAttribute("error", "Time slot already booked");
-            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();        
+        List<Long> memberIds = new ArrayList<>();
+        if (groupMembers != null && !groupMembers.isEmpty()) {
+            memberIds = Arrays.stream(groupMembers.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::parseLong)
+                    .collect(Collectors.toList());
+        }
+
+        // checking if selected members have other active bookings for the same appointment group
+        if (appointmentGroup.getType() == AppointmentGroup.AppointmentType.GROUP){
+            if (!memberIds.isEmpty()) {
+            
+                for (Long memberId : memberIds) {
+                    boolean memberBooked = timeSlotRepository.isUserInAnyBookingInGroup(timeSlot.getAppointmentGroupId(), memberId);
+                    
+                    if (memberBooked) {
+
+                        User member = userRepository.findById(memberId).orElse(null);
+                        String memberName = member.getName();
+
+                        redirectAttributes.addFlashAttribute("error", memberName + " already has another booking for this appointment group.");
+                        return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+                    }
+                }
+
+                timeSlot.setGroupMemberIdsList(memberIds);
+            } else{
+                redirectAttributes.addFlashAttribute("error", "This booking requires at least one other group member");
+                return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+            }
         }
 
         timeSlot.setStatus(TimeSlot.BookingStatus.BOOKED);
@@ -180,9 +246,17 @@ public class StudentController {
             redirectAttributes.addFlashAttribute("error", "Time slot not booked");
             return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
         }
+        
+        List<Long> groupMembers = timeSlot.getGroupMemberIdsList();
+
+        if (!user.getId().equals(timeSlot.getBookedByUserId()) && !groupMembers.contains(user.getId())) {
+            redirectAttributes.addFlashAttribute("error", "Not Allowed");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
 
         timeSlot.setStatus(TimeSlot.BookingStatus.AVAILABLE);
         timeSlot.setBookedByUserId(null);
+        timeSlot.setGroupMemberIdsList(new ArrayList<>());  
         timeSlotRepository.save(timeSlot);
 
         redirectAttributes.addFlashAttribute("message", "Time slot cancelled successfully");

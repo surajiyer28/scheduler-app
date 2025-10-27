@@ -98,6 +98,22 @@ public class TAController {
                     slot.setBookedByUserName(bookedByUser.get().getName());
                     slot.setBookedByUserEmail(bookedByUser.get().getEmail());
                 }
+                if (appointmentGroup.getType() == AppointmentGroup.AppointmentType.GROUP) {
+                    List<Long> memberIds = slot.getGroupMemberIdsList();
+                    if (!memberIds.isEmpty()) {
+                        List<String> memberNames = new ArrayList<>();
+                        for (Long memberId : memberIds) {
+                            Optional<User> member = userRepository.findById(memberId);
+                            if (member.isPresent()) {
+                                memberNames.add(member.get().getName());
+                            }
+                        }
+
+                        if (!memberNames.isEmpty()) {
+                            slot.setBookedByUserEmail(slot.getBookedByUserEmail() + "||" + String.join(", ", memberNames));
+                        }
+                    }
+                }
             }
         }
 

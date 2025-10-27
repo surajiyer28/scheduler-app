@@ -70,12 +70,15 @@ public class DBInitializer implements CommandLineRunner {
         ta.setRole(UserRole.TA);
         users.add(ta);
         
-        User student = new User();
-        student.setName("Student");
-        student.setEmail("student@iu.edu");
-        student.setPassword("password");
-        student.setRole(UserRole.STUDENT);
-        users.add(student);
+        for (int i = 1; i <= 5; i++) {
+            User student = new User();
+            student.setName("Student" + i);
+            student.setEmail("student" + i + "@iu.edu");
+            student.setPassword("password");
+            student.setRole(UserRole.STUDENT);
+            users.add(student);
+        }
+
         
         userRepository.saveAll(users);
 
@@ -97,6 +100,7 @@ public class DBInitializer implements CommandLineRunner {
         group.setTitle("Sprint1");
         group.setType(AppointmentType.INDIVIDUAL); 
         group.setDurationPerSlot(30); 
+        group.setGapBetweenSlots(0);
         group.setProfessorId(prof.getId());
         group.setCreatedAt(LocalDateTime.now());
         

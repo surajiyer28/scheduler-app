@@ -48,6 +48,9 @@ public class AppointmentGroup {
     @NotNull
     private int durationPerSlot;
 
+    // new field to store gap between timeslots
+    private int gapBetweenSlots = 0;
+
     @Column(columnDefinition = "TEXT")
     private String availabilitySlots;
     
