@@ -26,8 +26,7 @@ import jakarta.validation.Valid;
 @SessionAttributes("currentUser")
 public class AppController {
 
-    @Autowired
-    private UserRepository userRepository;
+    @Autowired UserRepository userRepository;
 
     @ModelAttribute(name ="roles")
     public UserRole[] roles(){
