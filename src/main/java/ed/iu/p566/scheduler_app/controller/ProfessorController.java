@@ -124,6 +124,7 @@ public class ProfessorController {
             RedirectAttributes redirectAttributes) {
         
         if (user == null || user.getRole() != User.UserRole.PROFESSOR) {
+            redirectAttributes.addFlashAttribute("error", "Unauthorized request");
             return "redirect:/";
         }
         
@@ -143,8 +144,7 @@ public class ProfessorController {
         for (int i = 0; i < slots.size(); i++) {
             for (int j = i + 1; j < slots.size(); j++) {
                 if (slots.get(i).checkOverlap(slots.get(j))) {
-                    redirectAttributes.addFlashAttribute("error", 
-                        "Availability windows cannot overlap on the same date");
+                    redirectAttributes.addFlashAttribute("error", "Availability windows cannot overlap on the same date");
                     return "redirect:/professor/appointments/create";
                 }
             }
