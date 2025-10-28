@@ -1,0 +1,68 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [  master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  test:
+    name: Run Unit Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    
+    - name: Run tests
+      run: mvn clean test
+    
+    - name: Publish test results
+      if: always()
+      uses: dorny/test-reporter@v1
+      with:
+        name: Test Results
+        path: target/surefire-reports/*.xml
+        reporter: java-junit
+
+  build-and-deploy:
+    name: Build & Deploy to Render
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    environment: render
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Trigger Render Deploy
+      run: |
+        RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+          -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+          -H "Content-Type: application/json" \
+          -d '{"clearCache": "clear"}')
+        
+        HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+        BODY=$(echo "$RESPONSE" | sed '$d')
+        
+        echo "Response: $BODY"
+        echo "HTTP Status: $HTTP_CODE"
+        
+        if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+          echo "✅ Deployment triggered successfully!"
+          echo "Deploy ID: $(echo $BODY | jq -r '.id // \"N/A\"')"
+          echo "Status: $(echo $BODY | jq -r '.status // \"N/A\"')"
+        else
+          echo "❌ Deployment failed with status $HTTP_CODE"
+          echo "$BODY"
+          exit 1
+        fi
