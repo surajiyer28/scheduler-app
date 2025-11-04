@@ -6,6 +6,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -59,14 +60,14 @@ public class DBInitializer implements CommandLineRunner {
         User prof = new User();
         prof.setName("Professor");
         prof.setEmail("prof@iu.edu");
-        prof.setPassword("password");  
+        prof.setPassword(BCrypt.hashpw("password", BCrypt.gensalt()));
         prof.setRole(UserRole.PROFESSOR);
         users.add(prof);
         
         User ta = new User();
         ta.setName("TA");
         ta.setEmail("ta@iu.edu");
-        ta.setPassword("password");
+        ta.setPassword(BCrypt.hashpw("password", BCrypt.gensalt()));
         ta.setRole(UserRole.TA);
         users.add(ta);
         
@@ -74,7 +75,7 @@ public class DBInitializer implements CommandLineRunner {
             User student = new User();
             student.setName("Student" + i);
             student.setEmail("student" + i + "@iu.edu");
-            student.setPassword("password");
+            student.setPassword(BCrypt.hashpw("password", BCrypt.gensalt()));
             student.setRole(UserRole.STUDENT);
             users.add(student);
         }

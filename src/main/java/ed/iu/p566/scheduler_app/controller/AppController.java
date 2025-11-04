@@ -2,6 +2,7 @@ package ed.iu.p566.scheduler_app.controller;
 
 import java.util.Optional;
 
+import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -59,6 +60,7 @@ public class AppController {
 
         Optional<User> existingUser = userRepository.findByEmail(user.getEmail());
         if (existingUser.isEmpty()) {
+            user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
             userRepository.save(user);
             redirectAttributes.addFlashAttribute("message", "Account created successfully!");
             return "redirect:/";
@@ -73,7 +75,7 @@ public class AppController {
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User foundUser = userOpt.get();
-            if (foundUser.getPassword().equals(password)) {
+            if (BCrypt.checkpw(password, foundUser.getPassword())) {
 
                 model.addAttribute("currentUser", foundUser);
                 
