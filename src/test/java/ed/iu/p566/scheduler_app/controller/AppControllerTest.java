@@ -54,7 +54,7 @@ public class AppControllerTest {
         testUser.setName("Test User");
         testUser.setEmail("testuser@iu.edu");
         // testUser.setPassword("password");
-        testUser.setPassword("$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"); //using a valid fixed hash for the password "password"
+        testUser.setPassword(BCrypt.hashpw("password", BCrypt.gensalt())); 
         testUser.setRole(UserRole.STUDENT);
 
     }
@@ -103,17 +103,17 @@ public class AppControllerTest {
     }
     
 
-    // @Test
-    // void testLogin_Success(){
+    @Test
+    void testLogin_Success(){
 
-    //     when(userRepository.findByEmail("testuser@iu.edu")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmail("testuser@iu.edu")).thenReturn(Optional.of(testUser));
 
-    //     String result = appController.loginUser("testuser@iu.edu", "password", redirectAttributes, model);
+        String result = appController.loginUser("testuser@iu.edu", "password", redirectAttributes, model);
 
-    //     assertEquals("redirect:/dashboard", result);
-    //     assertTrue(redirectAttributes.getFlashAttributes().containsKey("message"));
-    //     verify(model).addAttribute("currentUser", testUser);      
-    // }
+        assertEquals("redirect:/dashboard", result);
+        assertTrue(redirectAttributes.getFlashAttributes().containsKey("message"));
+        verify(model).addAttribute("currentUser", testUser);      
+    }
 
 
     @Test
