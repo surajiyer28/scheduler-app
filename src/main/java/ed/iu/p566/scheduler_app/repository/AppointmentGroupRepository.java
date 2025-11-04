@@ -14,4 +14,6 @@ public interface AppointmentGroupRepository extends CrudRepository<AppointmentGr
     List<AppointmentGroup> getAppointmentGroupsByProfessorId(Long professorId);
 
     String getTitleById(Long id);
+
+    void deleteById(Long id);
 }
