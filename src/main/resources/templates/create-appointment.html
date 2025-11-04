@@ -26,25 +26,26 @@
         <div class="row justify-content-center" th:if="${currentUser.role.name() == 'PROFESSOR'}">
 
             <div class=" d-flex justify-content-between align-items-center mb-3 border border-info p-3" >
-                    <h5 class="mb-0 ">Create New Appointment Group</h5>
+                    <h5 class="mb-0" th:text="${appointmentGroup != null ? 'Modify Appointment Group' : 'Create New Appointment Group'}">Create New Appointment Group</h5>
                     <a href="/dashboard" class="btn btn-info text-dark fw-bold fs-6"><i class="bi bi-arrow-left-circle-fill text-dark fs-6"></i> Back to Dashboard </a>
             </div>
             <div class="row border p-3">
                 <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
                 
-                <form action="/professor/appointments/create" method="post" id="appointmentForm">
+                <form th:action="${appointmentGroup != null ? '/professor/appointments/modify' : '/professor/appointments/create'}" method="post" id="appointmentForm">
+                    <input type="hidden" name="groupId" th:value="${appointmentGroup?.id}">
                     <div class="form-step" id="step1">
                         <h5 class="mb-3">Basic Information</h5>
                         <div class="mb-3">
                             <label for="title" class="form-label">Title</label>
-                            <input type="text" class="form-control" id="title" name="title" required placeholder="e.g., Screen 1 Review Meetings">
+                            <input type="text" class="form-control" id="title" name="title" required placeholder="e.g., Screen 1 Review Meetings" th:value="${appointmentGroup?.title}">
                         </div>
 
                         <div class="mb-3">
                             <label for="type" class="form-label">Appointment Type</label>
                             <select class="form-select" id="type" name="type" required>
                                 <option value="">-- Select Type --</option>
-                                <option th:each="type : ${types}" th:value="${type}" th:text="${type}"></option>
+                                <option th:each="type : ${types}" th:value="${type}" th:text="${type}" th:selected="${appointmentGroup != null && appointmentGroup.type == type}"></option>
                             </select>                            
                         </div>
 
@@ -63,15 +64,40 @@
                         <hr>
                         <div id="availabilityContainer">
          
-                            <div class="availability-window ">
-                                <div class="d-flex justify-content-between align-items-center mb-1 ">
+                            <th:block th:if="${appointmentGroup != null}">
+                                <div th:each="slot, iterStat : ${appointmentGroup.availabilitySlots}" 
+                                    class="availability-window mt-3">
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <span class="availability-header" th:text="'Day #' + ${iterStat.count}">Day #1</span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvailabilityWindow(this)">
+                                            <i class="bi bi-trash-fill fs-6"></i> Delete
+                                        </button>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label small">Date</label>
+                                            <input type="date" class="form-control" name="dates" required th:value="${slot.date}">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label small">Start Time</label>
+                                            <input type="time" class="form-control" name="startTimes" step="60" required th:value="${slot.startTime}">
+                                        </div>
+                                        <div class="col-md-4 mb-2">
+                                            <label class="form-label small">End Time</label>
+                                            <input type="time" class="form-control" name="endTimes" step="60" required th:value="${slot.endTime}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </th:block>
+                            
+                            <div th:if="${appointmentGroup == null}" class="availability-window">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
                                     <span class="availability-header">Day #1</span>
                                     <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvailabilityWindow(this)">
                                         <i class="bi bi-trash-fill fs-6"></i> Delete
                                     </button>
                                 </div>
                                 <div class="row">
-                                    
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label small">Date</label>
                                         <input type="date" class="form-control" name="dates" required>
@@ -81,14 +107,14 @@
                                         <input type="time" class="form-control" name="startTimes" step="60" required>
                                     </div>
                                     <div class="col-md-4 mb-2">
-                                        
                                         <label class="form-label small">End Time</label>
                                         <input type="time" class="form-control" name="endTimes" step="60" required>
                                     </div>
-                                    
                                 </div>
                             </div>
+
                         </div>
+
                         <div class="d-flex justify-content-between mt-3">
                             <button type="button" class="btn btn-outline-secondary" onclick="prevStep(2)">← Back</button>
                             <button type="button" class="btn btn-info" onclick="nextStep(2)">Next →</button>
@@ -100,93 +126,25 @@
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="durationPerSlot" class="form-label">Slot Duration (minutes)</label>
-                                <input type="number" class="form-control" id="durationPerSlot" name="durationPerSlot" min="5" max="480" required placeholder="e.g., 15, 30, 45">
+                                <input type="number" class="form-control" id="durationPerSlot" name="durationPerSlot" min="5" max="480" required placeholder="e.g., 15, 30, 45" th:value="${appointmentGroup?.durationPerSlot}">
             
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label for="gapBetweenSlots" class="form-label">Gap Between Slots (minutes)</label>
-                                <input type="number" class="form-control" id="gapBetweenSlots" name="gapBetweenSlots" min="0" max="60" placeholder="e.g., 0, 5, 10">
+                                <input type="number" class="form-control" id="gapBetweenSlots" name="gapBetweenSlots" min="0" max="60" placeholder="e.g., 0, 5, 10" th:value="${appointmentGroup?.gapBetweenSlots}">
                                 <small class="text-muted">Leave blank for no gap</small>
                             </div>
                         </div>
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-center">
                             <button type="button" class="btn btn-outline-secondary" onclick="prevStep(3)">← Back</button>
-                            <button type="submit" class="btn btn-outline-info">Create Appointment Group</button>
-                        </div>
-                    </div>
-
-                    <!-- <div class="mb-3">
-                        <label for="title" class="form-label">Title</label>
-                        <input type="text" class="form-control" id="title" name="title" required
-                               placeholder="e.g., Screen 1 Review Meetings">
-                    </div>
-
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label for="type" class="form-label">Appointment Type</label>
-                            <select class="form-select" id="type" name="type" required>
-                                <option value="">-- Select Type --</option>
-                                <option th:each="type : ${types}" th:value="${type}" th:text="${type}"></option>
-                            </select>
-                            
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="durationPerSlot" class="form-label">Slot Duration (minutes)</label>
-                            <input type="number" class="form-control" id="durationPerSlot" name="durationPerSlot" min="5" max="480" required placeholder="e.g., 15, 30, 45">
-        
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label for="gapBetweenSlots" class="form-label">Gap Between Slots (minutes)</label>
-                            <input type="number" class="form-control" id="gapBetweenSlots" name="gapBetweenSlots" min="0" max="60" placeholder="e.g., 0, 5, 10">
-                            <small class="text-muted">Leave blank for no gap</small>
-                        </div>
-                    </div>
-
-                    
-
-                    <div class="mb-3">
-                        <div class="d-flex justify-content-between align-items-center mt-3 mb-3">
-                            <div>
-                                <label class="form-label mb-0">Availability Windows</label>
-                            </div>
-                            <button type="button" class="btn btn-sm btn-outline-success" onclick="addAvailabilityWindow()">
-                                <i class="bi bi-plus-circle-fill fs-6"></i> Add Day
-                            </button>
-                        </div>
-                        <hr>
-                        <div id="availabilityContainer">
-         
-                            <div class="availability-window ">
-                                <div class="d-flex justify-content-between align-items-center mb-1 ">
-                                    <span class="availability-header">Day #1</span>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvailabilityWindow(this)">
-                                        <i class="bi bi-trash-fill fs-6"></i> Delete
-                                    </button>
-                                </div>
-                                <div class="row">
-                                    
-                                    <div class="col-md-4 mb-2">
-                                        <label class="form-label small">Date</label>
-                                        <input type="date" class="form-control" name="dates" required>
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        <label class="form-label small">Start Time</label>
-                                        <input type="time" class="form-control" name="startTimes" step="60" required>
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        
-                                        <label class="form-label small">End Time</label>
-                                        <input type="time" class="form-control" name="endTimes" step="60" required>
-                                    </div>
-                                    
+                            <div class="text-end">
+                                <button type="submit" class="btn btn-outline-info" th:text="${appointmentGroup != null ? 'Update Appointment Group' : 'Create Appointment Group'}">Create Appointment Group</button>
+                                <div th:if="${appointmentGroup != null}" class="text-danger mt-2">
+                                    <i class="bi bi-exclamation-triangle-fill"></i> Caution: This action will cancel any existing bookings!
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="d-flex">
-                        <button type="submit" class="btn btn-outline-info">Create Appointment Group</button>
-                    </div> -->
                 </form>
             </div>
         </div>
@@ -211,7 +169,8 @@
             
         }
 
-        let windowCount = 1;
+        // let windowCount = 1;
+        let windowCount = document.querySelectorAll('.availability-window').length;
 
         function addAvailabilityWindow() {
             windowCount++;

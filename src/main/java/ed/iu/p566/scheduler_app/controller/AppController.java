@@ -63,17 +63,13 @@ public class AppController {
             redirectAttributes.addFlashAttribute("message", "Account created successfully!");
             return "redirect:/";
         }
-        redirectAttributes.addFlashAttribute("error", "User already exists.");
+        redirectAttributes.addFlashAttribute("error", "This email already has an account associated with it.");
         return "redirect:/signup";
     }
 
     @PostMapping("/login") 
-    public String loginUser(@RequestParam String email, 
-                        @RequestParam String password, 
-                        RedirectAttributes redirectAttributes,
-                        Model model) {
+    public String loginUser(@RequestParam String email, @RequestParam String password, RedirectAttributes redirectAttributes,Model model) {
 
-        
         Optional<User> userOpt = userRepository.findByEmail(email);
         if (userOpt.isPresent()) {
             User foundUser = userOpt.get();
@@ -94,9 +90,7 @@ public class AppController {
     }
 
     @GetMapping("/dashboard")
-    public String viewDashboard(
-            @SessionAttribute(value = "currentUser", required = false) User user,
-            RedirectAttributes redirectAttributes) {
+    public String viewDashboard( @SessionAttribute(value = "currentUser", required = false) User user, RedirectAttributes redirectAttributes) {
 
         if (user == null || user.getId() == null) {
             redirectAttributes.addFlashAttribute("error", "Please login first");
@@ -104,11 +98,11 @@ public class AppController {
         }
  
         if (user.getRole() == UserRole.STUDENT) {
-            return "redirect:/student/dashboard";
+            return "forward:/student/dashboard";
         } else if (user.getRole() == UserRole.PROFESSOR) {
-            return "redirect:/professor/dashboard";
+            return "forward:/professor/dashboard";
         } else if (user.getRole() == UserRole.TA) {
-            return "redirect:/ta/dashboard";
+            return "forward:/ta/dashboard";
         }
         
         return "redirect:/";

@@ -90,11 +90,10 @@ public class DBInitializer implements CommandLineRunner {
         User prof = userRepository.findByEmail("prof@iu.edu").orElse(null);
         
         if (prof == null) {
-            System.out.println("Weird, couldn't find the professor we just created");
+            System.out.println("Couldn't find the professor we just created");
             return;
 
         }
-        
 
         AppointmentGroup group = new AppointmentGroup();
         group.setTitle("Sprint1");
@@ -104,21 +103,18 @@ public class DBInitializer implements CommandLineRunner {
         group.setProfessorId(prof.getId());
         group.setCreatedAt(LocalDateTime.now());
         
-
-        LocalDate tomorrow = LocalDate.now().plusDays(1);
-        LocalDate dayAfter = LocalDate.now().plusDays(2);
         
         List<AvailabilitySlot> availabilitySlots = new ArrayList<>();
         
         AvailabilitySlot morningSlot = new AvailabilitySlot(
-            tomorrow, 
+            LocalDate.now().plusDays(1), 
             LocalTime.of(9, 0),  
             LocalTime.of(11, 0)   
         );
         availabilitySlots.add(morningSlot);
         
         AvailabilitySlot afternoonSlot = new AvailabilitySlot(
-            dayAfter, 
+            LocalDate.now().plusDays(2), 
             LocalTime.of(14, 0), 
             LocalTime.of(16, 0)  
         );
@@ -132,8 +128,46 @@ public class DBInitializer implements CommandLineRunner {
         List<TimeSlot> timeSlots = TimeSlotUtility.generateTimeSlots(savedGroup);
         timeSlotRepository.saveAll(timeSlots);
 
+        AppointmentGroup pastGroup = new AppointmentGroup();
+        pastGroup.setTitle("Past Test Slot");
+        pastGroup.setType(AppointmentType.GROUP); 
+        pastGroup.setDurationPerSlot(45); 
+        pastGroup.setGapBetweenSlots(5);
+        pastGroup.setProfessorId(prof.getId());
+        pastGroup.setCreatedAt(LocalDateTime.now().minusDays(5)); // Created 5 days ago
+        
+        
+        List<AvailabilitySlot> pastAvailabilitySlots = new ArrayList<>();
+        
+        AvailabilitySlot pastSlot1 = new AvailabilitySlot(
+            LocalDate.now().minusDays(2), 
+            LocalTime.of(10, 0),  
+            LocalTime.of(12, 0)   
+        );
+        pastAvailabilitySlots.add(pastSlot1);
+        
+        AvailabilitySlot pastSlot2 = new AvailabilitySlot(
+            LocalDate.now().minusDays(1), 
+            LocalTime.of(13, 0), 
+            LocalTime.of(15, 0)  
+        );
+        pastAvailabilitySlots.add(pastSlot2);
 
-        System.out.println("Created test appointment group and time slots");
+        AvailabilitySlot futureSlot = new AvailabilitySlot(
+            LocalDate.now().plusDays(1),
+            LocalTime.of(13, 0), 
+            LocalTime.of(15, 0)  
+        );
+        pastAvailabilitySlots.add(futureSlot);
+
+        pastGroup.setAvailabilitySlots(pastAvailabilitySlots);
+        
+        AppointmentGroup savedPastGroup = appointmentGroupRepository.save(pastGroup);
+        
+        List<TimeSlot> pastTimeSlots = TimeSlotUtility.generateTimeSlots(savedPastGroup);
+        timeSlotRepository.saveAll(pastTimeSlots);
+
+        System.out.println("Created test appointment groups and time slots");
         
     
     }

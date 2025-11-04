@@ -20,8 +20,7 @@
         </div>
     </nav>
     <div class="container mt-5">
-        <div class="alert alert-success" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></div>
-        <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
+        
 
         <!-- Professor UI  -->
 
@@ -33,6 +32,9 @@
             </div>
             
             <div class="row mt-4">
+                <div class="alert alert-success" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></div>
+                <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
+                
                 <div th:if="${appointmentGroups.isEmpty()}" class="alert alert-info">
                     No appointment groups created yet. Click "Create New" to get started.
                 </div>
@@ -55,7 +57,17 @@
                             <div class="mt-2">
                 
                                 <div class="d-flex justify-content-end">
-                                    <a th:if="${currentUser.role.name() == 'PROFESSOR'}" th:href="@{/professor/bookings/view/{id}(id=${group.id})}" class="btn btn-info btn-sm">View</a>
+                                    
+                                    <a th:if="${currentUser.role.name() == 'PROFESSOR'}" class="btn btn-outline-danger btn-sm m-2" \
+                                        th:attr="data-group-id=${group.id},
+                                        data-group-title=${group.title},
+                                        data-group-type=${group.type},
+                                        data-group-duration=${group.durationPerSlot}"
+                                        onclick="showDeleteModal(this)">
+                                        Delete
+                                    </a>
+                                    <a th:if="${currentUser.role.name() == 'PROFESSOR'}" th:href="@{/professor/appointments/modify/{id}(id=${group.id})}" class="btn btn-outline-warning btn-sm m-2">Modify</a>
+                                    <a th:if="${currentUser.role.name() == 'PROFESSOR'}" th:href="@{/professor/bookings/view/{id}(id=${group.id})}" class="btn btn-info btn-sm m-2">View</a>
                                     <a th:if="${currentUser.role.name() == 'TA'}" th:href="@{/ta/bookings/view/{id}(id=${group.id})}" class="btn btn-info btn-sm">View</a>
                                 </div>
                             </div>
@@ -68,7 +80,8 @@
 
         <!-- Student UI  -->
         <div class="row" th:if="${currentUser.role.name() == 'STUDENT'}">
-
+            <div class="alert alert-success" th:if="${message != null and !#strings.isEmpty(message)}" th:text="${message}"></div>
+            <div class="alert alert-danger" th:if="${error != null and !#strings.isEmpty(error)}" th:text="${error}"></div>
             <div class=" d-flex justify-content-between align-items-center mb-3 border border-info p-3" >
                     <h5 class="mb-0 ">Upcoming appointments</h5>
             </div>
@@ -134,8 +147,56 @@
             </div>
 
         </div>
+        
+
+        <!-- appointment group cancellation confirmation modal for professor -->
+        <div class="modal fade" id="deleteProfModal" tabindex="-1" aria-labelledby="deleteProfModalLabel" aria-hidden="true">
+            <div class="modal-dialog text-align-center">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-title" id="deleteProfModalLabel">Appointment Group Details</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="border p-2 bg-dark">
+                            <h5 class="mb-2"><strong><span id="c-group-title"></span></strong></h5>
+                            <p class="mb-1"><strong>Type:</strong> <span id="c-group-type"></span></p>
+                            <p class="mb-1"><strong>Duration:</strong> <span id="c-group-duration"></span></p>
+                        </div>
+                        
+                        <form action="/professor/appointments/delete" method="post" id="deleteProfForm">
+                            <input type="hidden" name="groupId" id="c-group-id">
+                        </form>
+                    </div>
+                    <div th:if="${currentUser.role.name() == 'PROFESSOR'}" class="modal-footer justify-content-center">
+                        <span class="text-danger">Caution: This action is not reversable!</span>
+                        <button type="submit" form="deleteProfForm" class="btn btn-outline-danger">Delete Appointment Group</button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
     </div>
-        
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+
+
+    <script>
+        function showDeleteModal(a) {
+            const groupId = a.getAttribute('data-group-id');
+            const groupTitle = a.getAttribute('data-group-title');
+            const groupType = a.getAttribute('data-group-type');
+            const groupDuration = a.getAttribute('data-group-duration');
+            
+            document.getElementById('c-group-id').value = groupId;
+            document.getElementById('c-group-title').textContent = groupTitle;
+            document.getElementById('c-group-type').textContent = groupType;
+            document.getElementById('c-group-duration').textContent = groupDuration;
+            
+            const deleteProfModal = new bootstrap.Modal(document.getElementById('deleteProfModal'));
+            deleteProfModal.show();
+        }
+
+    </script>
 </body>
 </html>

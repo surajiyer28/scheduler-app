@@ -163,6 +163,19 @@ public class StudentController {
             return "redirect:/student/dashboard";
         }
 
+        LocalDate slotDate = timeSlot.getDate();
+        LocalTime slotStartTime = timeSlot.getStartTime();
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        boolean isPast = slotDate.isBefore(today) || 
+                        (slotDate.isEqual(today) && slotStartTime.isBefore(now));
+
+        if (isPast) {
+            redirectAttributes.addFlashAttribute("error", "Cannot book/cancel past time slots");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
+
         AppointmentGroup appointmentGroup = appointmentGroupRepository.findById(timeSlot.getAppointmentGroupId()).orElse(null);
         if (appointmentGroup == null) {
             redirectAttributes.addFlashAttribute("error", "Appointment group not found");
@@ -239,6 +252,19 @@ public class StudentController {
         TimeSlot timeSlot = timeSlotRepository.findById(slotId).orElse(null);
         if (timeSlot == null) {
             redirectAttributes.addFlashAttribute("error", "Time slot not found");
+            return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
+        }
+
+        LocalDate slotDate = timeSlot.getDate();
+        LocalTime slotStartTime = timeSlot.getStartTime();
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        boolean isPast = slotDate.isBefore(today) || 
+                        (slotDate.isEqual(today) && slotStartTime.isBefore(now));
+
+        if (isPast) {
+            redirectAttributes.addFlashAttribute("error", "Cannot book/cancel past time slots");
             return "redirect:/student/bookings/book/" + timeSlot.getAppointmentGroupId();
         }
 
