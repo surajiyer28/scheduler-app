@@ -10,7 +10,7 @@
 
 Live at: https://appointment-scheduler-z31a.onrender.com/
 
-##Quick Start:
+## Quick Start:
 ```bash
 # Clone and run
 git clone 
