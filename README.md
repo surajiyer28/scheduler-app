@@ -21,13 +21,14 @@ cd scheduler-app
 ## How It Works
 
 **Professors:**
-1. Create appointment groups with titles
-2. Set individual or group type
-3. Add availability windows (dates/times)
-4. System generates time slots automatically
+1. Create appointment groups with titles, durations and their availability.
+2. System generates time slots automatically with the given duration and an optional gap.
+3. Professors can also modify existing appointment groups or bookings.
 
 **Students:**
-1. Browse available appointments
-2. Click a green slot to book
-3. For groups, select classmates
-4. One booking per appointment group
+1. Can browse through different appointment groups and book time slots within appointment groups (one timeslot per group).
+2. Students can also modify or cancel an existing booking.
+
+**TAs:**
+1. Browse through all available time slots within different appointment groups.
+2. View details of bookings such as date, time and who the slot has been booked by.
