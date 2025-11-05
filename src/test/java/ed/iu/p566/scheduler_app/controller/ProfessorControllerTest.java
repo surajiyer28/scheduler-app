@@ -72,7 +72,7 @@ public class ProfessorControllerTest {
         AppointmentType type = AppointmentType.INDIVIDUAL;
         int durationPerSlot = 15;
         int gapBetweenSlots = 0;
-        String[] dates = {"2025-11-05"};
+        String[] dates = { LocalDate.now().plusDays(1).toString() };
         String[] startTimes = {"09:00"};
         String[] endTimes = {"11:00"};
 
